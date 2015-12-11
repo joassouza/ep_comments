@@ -38,7 +38,6 @@ var buildCommentFrom = function(form) {
     comment.changeFrom = changeFrom;
     comment.changeTo = changeTo;
   }
-
   return comment;
 }
 
