@@ -828,6 +828,15 @@ ep_comments.prototype.getSelectedText = function(rep) {
   return selectedText;
 }
 
+ep_comments.prototype.saveCommentWithNoSelection = function (data) {
+  var self = this;
+  self.socket.emit('addComment', data, function (commentId, comment){
+    comment.commentId = commentId;
+    self.setComment(commentId, comment);
+    self.collectComments();
+  });
+}
+
 // Save comment
 ep_comments.prototype.saveComment = function(data, rep) {
   var self = this;
@@ -835,13 +844,13 @@ ep_comments.prototype.saveComment = function(data, rep) {
   self.socket.emit('addComment', data, function (commentId, comment){
     comment.commentId = commentId;
 
+    self.setComment(commentId, comment);
     self.ace.callWithAce(function (ace){
       // console.log('addComment :: ', commentId);
       ace.ace_performSelectionChange(rep.selStart, rep.selEnd, true);
       ace.ace_setAttributeOnSelection('comment', commentId);
     },'insertComment', true);
 
-    self.setComment(commentId, comment);
     self.collectComments();
   });
 }
@@ -942,6 +951,12 @@ ep_comments.prototype.pushComment = function(eventType, callback){
   }
 };
 
+// Get a comment by its commentID
+ep_comments.prototype.getComment = function(commentId){
+  var comments = pad.plugins.ep_comments_page.comments;
+  var commentData = comments[commentId];
+  return commentData;
+}
 /************************************************************************/
 /*                           Etherpad Hooks                             */
 /************************************************************************/
@@ -967,6 +982,26 @@ var hooks = {
     }
   },
 
+  aceCreateDomLine: function(name, context){
+    var cls = context.cls;
+    var commentTag = /(?:^| )(c-[A-Za-z0-9]*)/.exec(cls);
+    if (commentTag && pad.plugins && pad.plugins.ep_comments_page){
+      var commentId = commentTag[1];
+      var commentData = hooksHelpers.getCommentData(commentId);
+
+      if (commentData){
+        var classValues = commentData.data;
+        var modifier = {
+          extraOpenTags: hooksHelpers.createOpenTags(classValues),
+          extraCloseTags: hooksHelpers.createCloseTags(),
+          cls: cls,
+        };
+        return [modifier];
+      }
+
+    }
+  },
+
   // Insert comments classes
   aceAttribsToClasses: function(hook, context){
     if(context.key == 'comment' && context.value !== "comment-deleted") return ['comment', context.value];
@@ -974,14 +1009,60 @@ var hooks = {
 
   aceEditorCSS: function(){
     return cssFiles;
-  }
+  },
+};
 
+var hooksHelpers = {
+
+  // PUT THIS ARRAY IN ONE PLACE, THERE IS THE SAME ONE IN THE SHARED.JS
+  commentTags: ["comment-text"],
+
+  createOpenTags: function (classValues) {
+    var openTags = "";
+    //TODO DRY ME!
+    var commentClass = [this.escapeClass(classValues.text)];
+    for (var i = this.commentTags.length - 1; i >= 0; i--) {
+      openTags += this.createOpenTag(this.commentTags[i], commentClass[i]);
+    };
+    return openTags;
+  },
+
+  createCloseTags: function () {
+    var closeTags = "";
+    for (var i = this.commentTags.length - 1; i >= 0; i--) {
+      closeTags += this.createCloseTag(this.commentTags[i])
+    };
+    return closeTags;
+  },
+
+  createOpenTag: function(tag, classValue) {
+    return "<" + tag + " class='" + classValue + "'>";
+  },
+
+  createCloseTag: function (tag) {
+    return "</" +  tag + ">";
+  },
+
+  getCommentData: function(commentId) {
+    return pad.plugins.ep_comments_page.getComment(commentId);
+  },
+
+  escapeClass: function(className){
+    // encodeURI does not escape single quotes, so we need to force it
+    // %27 is the default value to the single quote URI encoded so we can use
+    // decodeURI function without any problem
+    // we add a space in the beginning to avoid the class name to match another styling class
+    // e.g., if we have a comment with text 'popup' which matches with the existent class 'popup'
+    // the class escaped will be '%20popup'
+    return encodeURI(" " + className).replace("'", "%27");
+  }
 };
 
 exports.aceEditorCSS          = hooks.aceEditorCSS;
 exports.postAceInit           = hooks.postAceInit;
 exports.aceAttribsToClasses   = hooks.aceAttribsToClasses;
 exports.aceEditEvent          = hooks.aceEditEvent;
+exports.aceCreateDomLine      = hooks.aceCreateDomLine;
 
 // Given a CSS selector and a target element (in this case pad inner)
 // return the rep as an array of array of tuples IE [[[0,1],[0,2]], [[1,3],[1,5]]]
