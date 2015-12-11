@@ -57,7 +57,8 @@ exports.bulkAddComments = function(padId, data, callback)
     var newComments = [];
     var commentIds = _.map(data, function(commentData) {
       //create the new comment
-      var commentId = "c-" + randomString(16);
+      //if it's the comment was copied it already have a commentID so we don't need create one
+      var commentId = commentData.commentId || "c-" + randomString(16) ;
 
       var comment = {
         "author": commentData.author || "empty",
