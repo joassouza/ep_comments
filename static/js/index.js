@@ -14,6 +14,7 @@ var commentBoxes = require('ep_comments_page/static/js/commentBoxes');
 var commentIcons = require('ep_comments_page/static/js/commentIcons');
 var newComment = require('ep_comments_page/static/js/newComment');
 var commentL10n = require('ep_comments_page/static/js/commentL10n');
+var commentTags = require('ep_comments_page/static/js/shared').commentTags;
 
 var cssFiles = ['ep_comments_page/static/css/comment.css', 'ep_comments_page/static/css/commentIcon.css'];
 
@@ -1014,33 +1015,39 @@ var hooks = {
 
 var hooksHelpers = {
 
-  // PUT THIS ARRAY IN ONE PLACE, THERE IS THE SAME ONE IN THE SHARED.JS
-  commentTags: ["comment-text"],
-
   createOpenTags: function (classValues) {
     var openTags = "";
-    //TODO DRY ME!
-    var commentClass = [this.escapeClass(classValues.text)];
-    for (var i = this.commentTags.length - 1; i >= 0; i--) {
-      openTags += this.createOpenTag(this.commentTags[i], commentClass[i]);
+    var commentClasses = this.buildArrayOfCommentClasses(classValues);
+
+    for (var i = commentTags.length - 1; i >= 0; i--) {
+      openTags += this.createOpenTag(commentTags[i], commentClasses[i]);
     };
     return openTags;
   },
 
   createCloseTags: function () {
     var closeTags = "";
-    for (var i = this.commentTags.length - 1; i >= 0; i--) {
-      closeTags += this.createCloseTag(this.commentTags[i])
+    for (var i = commentTags.length - 1; i >= 0; i--) {
+      closeTags += this.createCloseTag(commentTags[i])
     };
     return closeTags;
   },
 
   createOpenTag: function(tag, classValue) {
-    return "<" + tag + " class='" + classValue + "'>";
+    return "<" + tag + " class='" + classValue + "'><empty></empty>";
   },
 
   createCloseTag: function (tag) {
     return "</" +  tag + ">";
+  },
+
+  buildArrayOfCommentClasses: function(classValues){
+    var text      = this.escapeClass(classValues.text);
+    var name      = this.escapeClass(classValues.name);
+    var author    = classValues.author;
+    var timestamp = classValues.timestamp;
+
+    return [text, name, author, timestamp];
   },
 
   getCommentData: function(commentId) {
@@ -1048,10 +1055,10 @@ var hooksHelpers = {
   },
 
   escapeClass: function(className){
-    // encodeURI does not escape single quotes, so we need to force it
-    // %27 is the default value to the single quote URI encoded so we can use
+    // encodeURI does not escape single quotes. We need to force it,
+    // %27 is the default value to the single quote URI encoded, so we can use the
     // decodeURI function without any problem
-    // we add a space in the beginning to avoid the class name to match another styling class
+    // we add a space in the beginning to avoid the class name to match any styling class
     // e.g., if we have a comment with text 'popup' which matches with the existent class 'popup'
     // the class escaped will be '%20popup'
     return encodeURI(" " + className).replace("'", "%27");
