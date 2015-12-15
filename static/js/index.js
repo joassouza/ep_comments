@@ -1101,8 +1101,8 @@ var hooks = {
       if (commentData){
         var classValues = commentData.data;
         var modifier = {
-          extraOpenTags: hooksHelpers.createOpenTags(classValues),
-          extraCloseTags: hooksHelpers.createCloseTags(),
+          extraOpenTags: hooksHelpers.createTags(classValues),
+          extraCloseTags: "",
           cls: cls,
         };
         return [modifier];
@@ -1129,22 +1129,18 @@ var hooks = {
 
 var hooksHelpers = {
 
-  createOpenTags: function (classValues) {
-    var openTags = "";
+  createTags: function (classValues) {
+    var tags = "";
     var commentClasses = this.buildArrayOfCommentClasses(classValues);
 
     for (var i = commentTags.length - 1; i >= 0; i--) {
-      openTags += this.createOpenTag(commentTags[i], commentClasses[i]);
+      tags += this.createTag(commentTags[i], commentClasses[i]);
     };
-    return openTags;
+    return tags;
   },
 
-  createCloseTags: function () {
-    var closeTags = "";
-    for (var i = commentTags.length - 1; i >= 0; i--) {
-      closeTags += this.createCloseTag(commentTags[i])
-    };
-    return closeTags;
+  createTag: function(tag, classValue) {
+    return this.createOpenTag(tag, classValue) + this.createCloseTag(tag);
   },
 
   createOpenTag: function(tag, classValue) {
