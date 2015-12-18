@@ -16,6 +16,7 @@ var newComment = require('ep_comments_page/static/js/newComment');
 var preCommentMark = require('ep_comments_page/static/js/preCommentMark');
 var commentL10n = require('ep_comments_page/static/js/commentL10n');
 var commentTags = require('ep_comments_page/static/js/shared').commentTags;
+var commentReplyTags = require('ep_comments_page/static/js/shared').commentReplyTags;
 
 var cssFiles = ['ep_comments_page/static/css/comment.css', 'ep_comments_page/static/css/commentIcon.css'];
 
@@ -268,6 +269,10 @@ ep_comments.prototype.init = function(){
       self.getCommentReplies(function(replies){
         self.commentReplies = replies;
         self.collectCommentReplies();
+        // Here we force update the tag, so we populate the tag reply with the values
+        // Without this line, if we copy a comment will not go the comment reply
+        // unless the line was updated
+        self.padInner.contents().find('.'+data.commentId).addClass("reprocess");
       });
     });
 
@@ -469,7 +474,6 @@ ep_comments.prototype.collectCommentReplies = function(callback){
   var padComment  = this.padInner.contents().find('.comment');
   $.each(this.commentReplies, function(replyId, reply){
     var commentId = reply.commentId;
-
     // tell comment icon that this comment has 1+ replies
     commentIcons.commentHasReply(commentId);
 
@@ -658,6 +662,13 @@ ep_comments.prototype.setComment = function(commentId, comment){
   comment.formattedDate = new Date(comment.timestamp).toISOString();
   if (comments[commentId] == null) comments[commentId] = {};
   comments[commentId].data = comment;
+};
+
+ep_comments.prototype.setCommentReply = function(commentReply){
+  var commentReplies = this.commentReplies;
+  var replyId = commentReply.replyId;
+  if(commentReplies[replyId] == null) commentReplies[replyId] = {}
+  commentReplies[replyId] = commentReply;
 };
 
 // Get all comments
@@ -923,6 +934,28 @@ ep_comments.prototype.cleanLine = function(line, lineText){
   return lineText;
 }
 
+ep_comments.prototype.saveCommentReplies = function(commentReplyData){
+  var self = this;
+  var data = self.createCommentReply(commentReplyData.replyData);
+  self.socket.emit('addCommentReply', data, function (){
+    self.setCommentReply(data); // here we add the new comment reply to this.commentReplyes object
+    self.collectCommentReplies();
+  });
+}
+
+ep_comments.prototype.createCommentReply = function(replyData){
+  var data = this.getCommentData();
+  data.commentId = replyData.commentId;
+  data.text = replyData.text;
+  data.changeTo = replyData.changeTo
+  data.changeFrom = replyData.changeFrom;
+  data.replyId = replyData.replyId;
+  data.name = replyData.name;
+  data.timestamp = parseInt(replyData.timestamp);
+
+  return data;
+}
+
 ep_comments.prototype.saveCommentWithNoSelection = function (data) {
   var self = this;
   self.socket.emit('addComment', data, function (commentId, comment){
@@ -1030,9 +1063,9 @@ ep_comments.prototype.pushComment = function(eventType, callback){
 // Get a comment by its commentID
 ep_comments.prototype.getComment = function(commentId){
   var comments = pad.plugins.ep_comments_page.comments;
-  var commentData = comments[commentId];
-  return commentData;
-}
+  return comments[commentId];
+};
+
 /************************************************************************/
 /*                           Etherpad Hooks                             */
 /************************************************************************/
@@ -1072,11 +1105,11 @@ var hooks = {
     if (commentTag && pad.plugins && pad.plugins.ep_comments_page){
       var commentId = commentTag[1];
       var commentData = hooksHelpers.getCommentData(commentId);
-
+      var commentReplies = pad.plugins.ep_comments_page.commentReplies;
       if (commentData){
         var classValues = commentData.data;
         var modifier = {
-          extraOpenTags: hooksHelpers.createTags(classValues),
+          extraOpenTags: hooksHelpers.createTags(classValues) + hooksHelpers.createReplyTags(commentId, commentReplies),
           extraCloseTags: "",
           cls: cls,
         };
@@ -1104,6 +1137,23 @@ var hooks = {
 
 var hooksHelpers = {
 
+  createReplyTags: function(commentIdOfTagIsBeingProcessed, commentReplies){
+    var self = this;
+    var tags = "";
+    var commentReply = "";
+    $.each(commentReplies, function(replyId, reply){
+      var commentIdOfTheParentComment = reply.commentId;
+      if(commentIdOfTagIsBeingProcessed === commentIdOfTheParentComment){
+        commentReplyClasses = self.buildArrayOfCommentReplyClasses(reply);
+        for (var i = 0; i < commentReplyTags.length; i++) {
+          commentReply +=  self.createTag(commentReplyTags[i], commentReplyClasses[i]);
+        };
+        tags += "<reply>" + commentReply + "</reply>";
+      }
+    });
+    return "<replies>" + tags + "</replies>";
+  },
+
   createTags: function (classValues) {
     var tags = "";
     var commentClasses = this.buildArrayOfCommentClasses(classValues);
@@ -1124,6 +1174,19 @@ var hooksHelpers = {
 
   createCloseTag: function (tag) {
     return "</" +  tag + ">";
+  },
+
+  buildArrayOfCommentReplyClasses: function(reply){
+    var author = reply.author;
+    var changeFrom = reply.changeFrom || ""; // avoid to stringfy null value
+    var changeTo = reply.changeTo || ""; // avoid to stringfy null value
+    var commentId = reply.commentId;
+    var name = reply.name;
+    var replyId = reply.replyId;
+    var text = reply.text;
+    var timestamp = reply.timestamp;
+
+    return [author, changeFrom, changeTo, commentId, name, replyId, text, timestamp];
   },
 
   buildArrayOfCommentClasses: function(classValues){

@@ -131,8 +131,8 @@ exports.bulkAddCommentReplies = function(padId, data, callback){
 
     var newReplies = [];
     var replyIds = _.map(data, function(replyData) {
-      //create the new reply id
-      var replyId = "c-reply-" + randomString(16);
+      // if the comment reply was copied it already have a replyId so we don't need create a new one
+      var replyId = replyData.replyId || "c-reply-" + randomString(16);
 
       metadata = replyData.comment || {};
 
