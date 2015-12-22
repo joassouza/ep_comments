@@ -142,7 +142,7 @@ exports.bulkAddCommentReplies = function(padId, data, callback){
         "changeTo"   : replyData.changeTo            || null,
         "changeFrom" : replyData.changeFrom          || null,
         "author"     : metadata.author               || "empty",
-        "name"       : metadata.name                 || replyData.name,
+        "name"       : replyData.name                || metadata.name,
         "timestamp"  : parseInt(replyData.timestamp) || new Date().getTime()
       };
 
