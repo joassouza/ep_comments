@@ -272,10 +272,10 @@ ep_comments.prototype.init = function(){
       self.getCommentReplies(function(replies){
         self.commentReplies = replies;
         self.collectCommentReplies();
-        // Here we force update the tag, so we populate the tag reply with the values
-        // Without this line, if we copy a comment will not go the comment reply
-        // unless the line was updated
-        self.padInner.contents().find('.'+data.commentId).addClass("reprocess");
+        // Here we force update the tag where the comment is, so we populate the tag reply
+        // with the values. Without this line, if we copy a comment will not go the comment
+        // reply unless the line was updated
+        self.padInner.contents().find('span.'+data.commentId).addClass("reprocess");
       });
     });
 
@@ -1165,11 +1165,11 @@ var hooksHelpers = {
   createReplyTags: function(commentIdOfTagIsBeingProcessed, commentReplies){
     var self = this;
     var tags = "";
-    var commentReply = "";
     $.each(commentReplies, function(replyId, reply){
+      var commentReply = "";
       var commentIdOfTheParentComment = reply.commentId;
       if(commentIdOfTagIsBeingProcessed === commentIdOfTheParentComment){
-        commentReplyClasses = self.buildArrayOfCommentReplyClasses(reply);
+        commentReplyClasses = self.buildArrayOfCommentReplyClasses(replyId, reply);
         for (var i = 0; i < commentReplyTags.length; i++) {
           commentReply +=  self.createTag(commentReplyTags[i], commentReplyClasses[i]);
         };
@@ -1201,13 +1201,13 @@ var hooksHelpers = {
     return "</" +  tag + ">";
   },
 
-  buildArrayOfCommentReplyClasses: function(reply){
+  buildArrayOfCommentReplyClasses: function(replyId, reply){
     var author = reply.author;
     var changeFrom = reply.changeFrom || ""; // avoid to stringfy null value
     var changeTo = reply.changeTo || ""; // avoid to stringfy null value
     var commentId = reply.commentId;
     var name = reply.name;
-    var replyId = reply.replyId;
+    var replyId = replyId;
     var text = reply.text;
     var timestamp = reply.timestamp;
 
