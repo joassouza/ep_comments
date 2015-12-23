@@ -272,7 +272,7 @@ ep_comments.prototype.init = function(){
         // Here we force update the tag where the comment is, so we populate the tag reply
         // with the values. Without this line, if we copy a comment will not go the comment
         // reply unless the line was updated
-        self.padInner.contents().find('span.'+data.commentId).addClass("reprocess");
+        self.updateCommentTag(data.commentId);
       });
     });
 
@@ -389,7 +389,8 @@ ep_comments.prototype.collectComments = function(callback){
     if(showRevert){
       self.showChangeAsAccepted(commentId);
     }
-
+    // To create the comment and comment replies tags we need to force update the tags where there is comment.
+    self.updateCommentTag(commentId);
   });
   // now if we apply a class such as mouseover to the editor it will go shitty
   // so what we need to do is add CSS for the specific ID to the document...
@@ -431,6 +432,12 @@ ep_comments.prototype.collectComments = function(callback){
   self.addListenersToCloseOpenedComment();
 
   self.setYofComments();
+};
+
+// Here we add an arbitrary class only to 'dirty' the tag so then the aceCreateDomLine
+// is caled and builds the comment and comment replies tags.
+ep_comments.prototype.updateCommentTag = function(commentId){
+  this.padInner.contents().find('span.' + commentId).addClass("reprocess");
 };
 
 ep_comments.prototype.addListenersToCloseOpenedComment = function() {
@@ -1109,7 +1116,7 @@ var hooks = {
       if (commentData){
         var classValues = commentData.data;
         var modifier = {
-          extraOpenTags: hooksHelpers.createTags(classValues) + hooksHelpers.createReplyTags(commentId, commentReplies),
+          extraOpenTags: hooksHelpers.createCommentTags(classValues) + hooksHelpers.createReplyTags(commentId, commentReplies),
           extraCloseTags: "",
           cls: cls,
         };
@@ -1154,7 +1161,7 @@ var hooksHelpers = {
     return "<replies>" + tags + "</replies>";
   },
 
-  createTags: function (classValues) {
+  createCommentTags: function (classValues) {
     var tags = "";
     var commentClasses = this.buildArrayOfCommentClasses(classValues);
 
