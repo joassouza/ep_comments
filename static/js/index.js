@@ -257,6 +257,8 @@ ep_comments.prototype.init = function(){
   // is this even used? - Yes, it is!
   this.container.on("submit", ".comment-reply", function(e){
     e.preventDefault();
+    var padOuter = $('iframe[name="ace_outer"]').contents();
+    var padInner = padOuter.find('iframe[name="ace_inner"]');
     var data = self.getCommentData();
     data.commentId = $(this).parent()[0].id;
     data.reply = $(this).find(".comment-reply-input").val();
@@ -272,7 +274,7 @@ ep_comments.prototype.init = function(){
         // Here we force update the tag where the comment is, so we populate the tag reply
         // with the values. Without this line, if we copy a comment will not go the comment
         // reply unless the line was updated
-        self.updateCommentTag(data.commentId);
+        padInner.contents().find('span.' + data.commentId).addClass("reprocess");
       });
     });
 
@@ -437,7 +439,10 @@ ep_comments.prototype.collectComments = function(callback){
 // Here we add an arbitrary class only to 'dirty' the tag so then the aceCreateDomLine
 // is caled and builds the comment and comment replies tags.
 ep_comments.prototype.updateCommentTag = function(commentId){
-  this.padInner.contents().find('span.' + commentId).addClass("reprocess");
+  var hasCommentTags = this.padInner.contents().find('span.' + commentId).children().length > 0;
+  if(!hasCommentTags){
+    this.padInner.contents().find('span.' + commentId).addClass("reprocess");
+  }
 };
 
 ep_comments.prototype.addListenersToCloseOpenedComment = function() {
