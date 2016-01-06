@@ -131,7 +131,7 @@ var saveCommentReply = function(data){
 
 var saveComment = function (context, commentData) {
   commentData.comment.commentId = context.state.commentId;
-  pad.plugins.ep_comments_page.saveCommentWithNoSelection(commentData);
+  pad.plugins.ep_comments_page.saveCommentWithoutSelection(commentData);
 };
 
 var unescapeClassName = function (classValueEncoded) {

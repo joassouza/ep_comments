@@ -169,13 +169,32 @@ var insertContainer = function() {
 var addIcon = function(commentId, comment){
   // we're only doing something if icons will be displayed at all
   if (!displayIcons()) return;
+  // we can have duplicated comments, here we get all the comments which shares the same commentId
+  var inlineComments = getPadInner().find(".comment."+commentId);
+  _.each(inlineComments, function(inlineComment){
+    var top = inlineComment.offsetTop + 5;
+    var iconsAtLine = getOrCreateIconsContainerAt(top);
+    comment.commentId = commentId;
+    var icon = $('#commentIconTemplate').tmpl(comment);
+    var hasCommentIconWithId = hasCommentWithThisId(iconsAtLine, commentId);
+    // Avoid to append more than once the same commentId
+    if (!hasCommentIconWithId){
+      icon.appendTo(iconsAtLine);
+    }
+  });
+}
 
-  var inlineComment = getPadInner().find(".comment."+commentId);
-  var top = inlineComment.get(0).offsetTop + 5;
-  var iconsAtLine = getOrCreateIconsContainerAt(top);
-  var icon = $('#commentIconTemplate').tmpl(comment);
-
-  icon.appendTo(iconsAtLine);
+// We need to check if we've already added an icon with this commentId
+// to avoid showing duplicated icons with the same commentId
+var hasCommentWithThisId = function(iconsAtLine, commentId) {
+  var hasCommentWithId = false;
+  var allIconsOnThisLine = iconsAtLine.children();
+  hasCommentWithId = _.each(allIconsOnThisLine, function(icon){
+    if ($(icon).data("commentid") == commentId){
+      return true;
+    }
+  });
+  return hasCommentWithId;
 }
 
 // Hide comment icons from container
@@ -189,21 +208,42 @@ var hideIcons = function() {
 }
 
 // Adjust position of the comment icon on the container, to be on the same
-// height of the pad text associated to the comment, and return the affected icon
+// height of the pad text associated to the comment
 var adjustTopOf = function(commentId, baseTop) {
-  // we're only doing something if icons will be displayed at all
-  if (!displayIcons() || !screenHasSpaceForIcons()) return;
-
-  var icon = getPadOuter().find('#icon-'+commentId);
-  var targetTop = baseTop+5;
+  var targetTop = baseTop + 5;
   var iconsAtLine = getOrCreateIconsContainerAt(targetTop);
+  appendIconAtLineIfNoExistYet(iconsAtLine, commentId);
+  showIcons(iconsAtLine, commentId);
+}
 
-  // move icon from one line to the other
-  if (iconsAtLine != icon.parent()) icon.appendTo(iconsAtLine);
+var showIcons = function(iconsAtLine, commentId){
+  $(iconsAtLine).children(".icon-"+commentId).show();
+}
 
-  icon.show();
+var appendIconAtLineIfNoExistYet = function(iconsAtLine, commentId){
+  var allIcons = getPadOuter().find('.icon-'+commentId);
+  var linesWithIconsPositions = linesWhereHasIcons(allIcons);
+  var commentPosition = iconsAtLine.get(0);
 
-  return icon;
+  var hasIconOnThisLine = _.contains(linesWithIconsPositions, commentPosition);
+  if(!hasIconOnThisLine){
+    createIconOnLine(commentId, iconsAtLine);
+  }
+}
+
+var linesWhereHasIcons = function(allIcons){
+  var linesWithIconsPositions = _.map(allIcons, function(icon){
+    return $(icon).parent().get(0);
+  });
+
+  return linesWithIconsPositions;
+}
+
+var createIconOnLine = function(commentId, iconsAtLine){
+  var comment = {};
+  comment.commentId = commentId;
+  var icon = $('#commentIconTemplate').tmpl(comment);
+  $(icon).appendTo(iconsAtLine);
 }
 
 // Indicate if comment detail currently opened was shown by a click on

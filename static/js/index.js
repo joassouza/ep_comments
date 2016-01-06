@@ -372,26 +372,24 @@ ep_comments.prototype.collectComments = function(callback){
     }
     var commentId   = classCommentId[1];
     var commentElm  = container.find('#'+ commentId);
-
     var comment     = comments[commentId];
     if(comment){
-      if (comment !== null) {
-        // If comment is not in sidebar insert it
-        if (commentElm.length == 0) {
-          self.insertComment(commentId, comment.data, it);
-          commentElm = container.find('#'+ commentId);
+      // If comment is not in sidebar insert it
+      if (commentElm.length == 0) {
+        self.insertComment(commentId, comment.data, it);
+        commentElm = container.find('#'+ commentId);
 
-          $(this).on('click', function(){
-            markerTop = $(this).position().top;
-            commentTop = commentElm.position().top;
-            containerTop = container.css('top');
-            container.css('top', containerTop - (commentTop - markerTop));
-          });
-        }
-
-        // localize comment element
-        commentL10n.localize(commentElm);
+        $(this).on('click', function(){
+          markerTop = $(this).position().top;
+          commentTop = commentElm.position().top;
+          containerTop = container.css('top');
+          container.css('top', containerTop - (commentTop - markerTop));
+        });
       }
+      // here we add an icon to all comments, including the duplicated ones
+      commentIcons.addIcon(commentId, comment);
+      // localize comment element
+      commentL10n.localize(commentElm);
     }
     var prevCommentElm = commentElm.prev();
     var commentPos;
@@ -462,7 +460,7 @@ ep_comments.prototype.collectComments = function(callback){
 };
 
 // Here we add an arbitrary class only to 'dirty' the tag so then the aceCreateDomLine
-// is caled and builds the comment and comment replies tags.
+// is called and builds the comment and comment replies tags.
 ep_comments.prototype.updateCommentTag = function(commentId){
   var hasCommentTags = this.padInner.contents().find('span.' + commentId).children().length > 0;
   if(!hasCommentTags){
@@ -605,7 +603,6 @@ ep_comments.prototype.setYofComments = function(){
       if (commentIcons.shouldShow(commentEle)) commentsToBeShown.push(commentEle);
     }
   });
-
   // re-display comments that were visible before
   _.each(commentsToBeShown, function(commentEle) {
     commentEle.show();
@@ -993,7 +990,7 @@ ep_comments.prototype.createCommentReply = function(replyData){
   return data;
 }
 
-ep_comments.prototype.saveCommentWithNoSelection = function (data) {
+ep_comments.prototype.saveCommentWithoutSelection = function (data) {
   var self = this;
   self.socket.emit('addComment', data, function (commentId, comment){
     comment.commentId = commentId;
