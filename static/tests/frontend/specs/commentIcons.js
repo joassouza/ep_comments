@@ -91,14 +91,16 @@ describe("Comment icons", function() {
         return inner$("div").length > 2;
       })
       .done(function() {
-        // wait until comment is visible again
+        // wait to create new nodes in the #commentIcons
+        // with two enters, it should create 3 children but it creates 2
         helper.waitFor(function() {
-          var $commentIcons = outer$("#commentIcons .comment-icon:visible");
-          return $commentIcons.length !== 0;
+          var $commentIcons = outer$("#commentIcons");
+          return $commentIcons.children().length === 2;
         })
         .done(function() {
-          // check height is the same
-          var $commentIcon = outer$("#commentIcons #icon-"+commentId);
+          // at this moment we've two div with the same ID but only one of them is visible
+          // which is the last one
+          var $commentIcon = outer$("#commentIcons #icon-"+commentId).last();
           var $commentedText = inner$("."+commentId);
           var expectedTop = $commentedText.offset().top + 5; // all icons are +5px down to adjust position
           expect($commentIcon.offset().top).to.be(expectedTop);
