@@ -50,7 +50,6 @@ describe("Comment copy", function(){
         expect($iconsWithThisCommentId).to.be(2);
       }).done(done);
     });
-
   });
 
 });

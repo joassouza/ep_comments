@@ -555,6 +555,7 @@ ep_comments.prototype.insertComment = function(commentId, comment, index){
 // Set all comments to be inline with their target REP
 ep_comments.prototype.setYofComments = function(){
   // for each comment in the pad
+  var self = this;
   var padOuter = $('iframe[name="ace_outer"]').contents();
   var padInner = padOuter.find('iframe[name="ace_inner"]');
   var inlineComments = padInner.contents().find(".comment");
@@ -573,7 +574,9 @@ ep_comments.prototype.setYofComments = function(){
       var commentEle = commentBoxes.adjustTopOf(commentId[1], y);
       // ... and adjust icons too
       commentIcons.adjustTopOf(commentId[1], y);
-
+      // when we move a comment to another line we have to check  if this comment has a reply,
+      // if so we add a reply icon
+      if(self.isACommentReply(commentId[1])) commentIcons.addReplyIcon(commentId[1]);
       // mark this comment to be displayed if it was visible before we start adjusting its position
       if (commentIcons.shouldShow(commentEle)) commentsToBeShown.push(commentEle);
     }
@@ -584,6 +587,12 @@ ep_comments.prototype.setYofComments = function(){
   });
 };
 
+ep_comments.prototype.isACommentReply = function(commentId){
+  var padOuter = $('iframe[name="ace_outer"]').contents();
+  var padInner = padOuter.find('iframe[name="ace_inner"]');
+  var replyTag = padInner.contents().find("."+commentId).find("reply").length > 0;
+  return replyTag;
+}
 // Make the adjustments after editor is resized (due to a window resize or
 // enabling/disabling Page View)
 ep_comments.prototype.editorResized = function() {
