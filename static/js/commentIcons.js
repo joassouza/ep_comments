@@ -216,6 +216,12 @@ var adjustTopOf = function(commentId, baseTop) {
   showIcons(iconsAtLine, commentId);
 }
 
+var addReplyIcon = function(commentId){
+  // change comment icon
+  var iconForComment = getPadOuter().find('#commentIcons').find(".icon-"+commentId);
+  iconForComment.addClass("with-reply");
+}
+
 var showIcons = function(iconsAtLine, commentId){
   $(iconsAtLine).children(".icon-"+commentId).show();
 }
@@ -265,7 +271,7 @@ var commentHasReply = function(commentId) {
   if (!displayIcons()) return;
 
   // change comment icon
-  var iconForComment = getPadOuter().find('#commentIcons').find("#icon-"+commentId);
+  var iconForComment = getPadOuter().find('#commentIcons').find(".icon-"+commentId);
   iconForComment.addClass("with-reply");
 }
 
@@ -309,6 +315,7 @@ exports.insertContainer = insertContainer;
 exports.addIcon = addIcon;
 exports.hideIcons = hideIcons;
 exports.adjustTopOf = adjustTopOf;
+exports.addReplyIcon = addReplyIcon;
 exports.isCommentOpenedByClickOnIcon = isCommentOpenedByClickOnIcon;
 exports.commentHasReply = commentHasReply;
 exports.shouldShow = shouldShow;
