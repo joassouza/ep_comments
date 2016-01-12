@@ -15,8 +15,8 @@ var commentIcons = require('ep_comments_page/static/js/commentIcons');
 var newComment = require('ep_comments_page/static/js/newComment');
 var preCommentMark = require('ep_comments_page/static/js/preCommentMark');
 var commentL10n = require('ep_comments_page/static/js/commentL10n');
-var commentTags = require('ep_comments_page/static/js/shared').commentTags;
-var commentReplyTags = require('ep_comments_page/static/js/shared').commentReplyTags;
+var commentTags = require('ep_comments_page/static/js/collectContent').commentTags;
+var commentReplyTags = require('ep_comments_page/static/js/collectContent').commentReplyTags;
 
 var cssFiles = ['ep_comments_page/static/css/comment.css', 'ep_comments_page/static/css/commentIcon.css'];
 
