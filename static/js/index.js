@@ -18,8 +18,8 @@ var commentL10n = require('ep_comments_page/static/js/commentL10n');
 var events = require('ep_comments_page/static/js/copyPasteEvents');
 var getCommentIdOnSelection = events.getCommentIdOnSelection;
 var browser = require('ep_etherpad-lite/static/js/browser');
-var commentTags = require('ep_comments_page/static/js/shared').commentTags;
-var commentReplyTags = require('ep_comments_page/static/js/shared').commentReplyTags;
+var commentTags = require('ep_comments_page/static/js/collectContent').commentTags;
+var commentReplyTags = require('ep_comments_page/static/js/collectContent').commentReplyTags;
 
 var cssFiles = ['ep_comments_page/static/css/comment.css', 'ep_comments_page/static/css/commentIcon.css'];
 
