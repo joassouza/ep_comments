@@ -558,8 +558,8 @@ ep_comments.prototype.setYofComments = function(){
   var self = this;
   var padOuter = $('iframe[name="ace_outer"]').contents();
   var padInner = padOuter.find('iframe[name="ace_inner"]');
-  var inlineComments = padInner.contents().find(".comment");
   var commentsToBeShown = [];
+  var inlineComments = self.getFirstOcurrenceOfCommentIds();
 
   // hide each outer comment...
   commentBoxes.hideAllComments();
@@ -586,6 +586,30 @@ ep_comments.prototype.setYofComments = function(){
     commentEle.show();
   });
 };
+
+ep_comments.prototype.getFirstOcurrenceOfCommentIds = function(){
+  var padOuter = $('iframe[name="ace_outer"]').contents();
+  var padInner = padOuter.find('iframe[name="ace_inner"]').contents();
+  var firstOcurrenceOfCommentIds = [];
+  var commentsId = this.getUniqueCommentsId(padInner);
+  _.each(commentsId, function(commentId){
+    var firstCommentIdOcurrence = padInner.find("." + commentId).first().get(0);
+    firstOcurrenceOfCommentIds.push(firstCommentIdOcurrence);
+  })
+  return firstOcurrenceOfCommentIds;
+}
+
+// we can have two comments with the same commentID
+ep_comments.prototype.getUniqueCommentsId = function(padInner){
+  var inlineComments = padInner.find(".comment");
+  var commentsId = [];
+  _.each(inlineComments, function(inlineComment){
+    var commentId = /(?:^| )(c-[A-Za-z0-9]*)/.exec(inlineComment.className);
+    commentsId.push(commentId[1]);
+  });
+  var commentIdsUnique = _.uniq(commentsId);
+  return commentIdsUnique;
+}
 
 ep_comments.prototype.isACommentReply = function(commentId){
   var padOuter = $('iframe[name="ace_outer"]').contents();
