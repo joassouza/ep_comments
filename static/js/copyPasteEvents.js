@@ -39,14 +39,35 @@ var selectionHasOnlyText = function(html, hiddenDiv){
 };
 
 var buildHtmlToCopy = function(html, range) {
-  var htmlOfParentNode = range.commonAncestorContainer.parentNode;
-  var tags = getTagsInSelection(htmlOfParentNode);
-  // this case happens when we got a selection with one or more styling (bold, italic, underline, strikethrough)
-  // applied in all selection in the same range. For example, <b><i><u>text</u></i></b>
-  if(tags){
-    html = buildOpenTags(tags) + html + buildCloseTags(tags);
+  // given this html <b><i><u>example</u><i></b>, and user selects part of the text like, "ple"
+  // range.commonAncestorContainer is the whole text node "example" and the
+  // range.commonAncestorContainer.parentNode is <u>example</u>
+  var textNode = range.commonAncestorContainer;
+  var innerTag = textNode.parentNode;
+  var formattingTags = getTagsInSelection(innerTag);
+  var commentTags;
+  // this case happens when we got a selection with one or more formatting tag applied to all selection in the same range.
+  // For example, <b><i><u>text</u></i></b>
+  if(formattingTags.length){
+    html =  buildOpenTags(formattingTags) + html + buildCloseTags(formattingTags);
+    var parentSpanOfSelection = $(textNode).closest("span");
+    // all comment and reply tags, excluding the style tags, which is the last one in the tree
+    // <span>
+    //  <comment-timestamp></comment-timestamp>
+    //  <comment-author></comment-author>
+    //  ...
+    //  <replies></replies>
+    //  <b>
+    //    <i>any other formatting tags go inside as well</i>
+    //  </b>
+    //</span>
+    var $commentTags = parentSpanOfSelection.children().last().siblings();
+    commentTags = getCommentTagsOuterHtml($commentTags);
+  }else{
+    // in this case, we have no formatting tags, so the comment and reply tags are in the same level of the text node
+    commentTags = getCommentTagsOuterHtml($(textNode).siblings());
   }
-  var htmlToCopy = "<span class='comment'>" + html + "</span>";
+  var htmlToCopy = "<span class='comment'>" + commentTags + html + "</span>";
   return htmlToCopy;
 };
 
@@ -73,11 +94,18 @@ var getTagsInSelection = function(htmlObject){
   var tag;
   while($(htmlObject)[0].localName != "span"){
     var html = $(htmlObject).prop('outerHTML');
-    var stylingTagRegex = /<(b|i|u|s)>/.exec(html);
-    tag = stylingTagRegex ? stylingTagRegex[1] : "";
+    var formattingTagRegex = /<(b|i|u|s)>/.exec(html);
+    tag = formattingTagRegex ? formattingTagRegex[1] : "";
     tags.push(tag);
     htmlObject = $(htmlObject).parent();
   }
+  return tags;
+}
+
+var getCommentTagsOuterHtml = function(commentTags){
+  var tags = _.reduce(commentTags, function(tag, commentTag){
+    return tag + $(commentTag).prop('outerHTML');
+  },"");
   return tags;
 }
 
@@ -96,7 +124,10 @@ var addCommentClassesOnline = function (target, commentId) {
   var pastingOnEmptyLine = isEmptyLine(target);
   var targetElement;
   if (pastingOnEmptyLine){
-    targetElement = $(target).parent();
+    // that smells bad, I know! when we put a caret to paste the target is a <br> and its parent is a div, then when we paste
+    // the div is updated with another id so then it is created a span inside the new div. Even though the div has a new id
+    // we keep the reference so we can find by the span created.
+    targetElement = $(target).parent().find("span");
   }else{
     targetElement = getTargetOnLineWithContent();
   }
