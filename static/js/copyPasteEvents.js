@@ -32,6 +32,7 @@ exports.addTextOnClipboard = function(e, ace, padInner, comments){
   }
 };
 
+
 var mapCommentIdToFakeId = function(commentsData){
   var commmentsDataInverted = {};
   _.each(commentsData, function(comment, fakeCommentId){
@@ -39,7 +40,7 @@ var mapCommentIdToFakeId = function(commentsData){
     commmentsDataInverted[commentId] = fakeCommentId;
   });
   return commmentsDataInverted;
-}
+};
 
 var replaceCommentIdsWithFakeIds = function(commentsData, html){
   var commmentsDataInverted =  mapCommentIdToFakeId(commentsData);
@@ -48,7 +49,7 @@ var replaceCommentIdsWithFakeIds = function(commentsData, html){
   });
   var htmlWithFakeCommentIds = getHtml(html);
   return htmlWithFakeCommentIds;
-}
+};
 
 var buildCommentsData = function(html, comments){
   var commentsData = {};
@@ -62,7 +63,7 @@ var buildCommentsData = function(html, comments){
     });
   }
   return commentsData;
-}
+};
 
 var generateFakeCommentId = function(){
   var commentId = "fakecomment-" + randomString(16);
@@ -143,7 +144,7 @@ var getTagsInSelection = function(htmlObject){
     htmlObject = $(htmlObject).parent();
   }
   return tags;
-}
+};
 
 exports.addCommentClasses = function(e){
   var comments = e.originalEvent.clipboardData.getData('text/objectComment');
@@ -166,7 +167,7 @@ var buildCommentData = function(comment, fakeCommentId){
   commentData.comment = comment;
   commentData.comment.commentId = fakeCommentId;
   return commentData;
-}
+};
 // copied from https://css-tricks.com/snippets/javascript/unescape-html-in-js/
 var htmlDecode = function(input) {
   var e = document.createElement('div');
@@ -209,17 +210,17 @@ var hasCommentOnMultipleLineSelection = function(firstLineOfSelection, lastLineO
     if (hasComment) multipleLineSelectionHasComment = true;
   };
   return multipleLineSelectionHasComment;
-}
+};
 
 var getFirstColumnOfSelection = function(line, rep, firstLineOfSelection){
   return line != firstLineOfSelection ? 0 : rep.selStart[1];
-}
+};
 
 var getLastColumnOfSelection = function(line, rep, lastLineOfSelection){
   var lineLength = getLength(line, rep);
   var positionOfLastCharacterSelected = rep.selEnd[1] - 1;
   return line != lastLineOfSelection ? lineLength : positionOfLastCharacterSelected;
-}
+};
 
 var hasCommentOnLine = function(lineNumber, firstColumn, lastColumn, attributeManager){
   var column = firstColumn;
@@ -231,11 +232,11 @@ var hasCommentOnLine = function(lineNumber, firstColumn, lastColumn, attributeMa
    }
   };
   return hasComment;
-}
+};
 
 var hasMultipleLineSelected = function(firstLineOfSelection, lastLineOfSelection){
   return  firstLineOfSelection != lastLineOfSelection;
-}
+};
 
 var getLength = function(line, rep) {
   var nextLine = line + 1;
@@ -246,4 +247,4 @@ var getLength = function(line, rep) {
   var lineLength = endLineOffset - startLineOffset - 1;
 
   return lineLength;
-}
+};
