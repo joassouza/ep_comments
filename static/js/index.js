@@ -45,6 +45,7 @@ function ep_comments(context){
   this.comments   = [];
   this.commentReplies = {};
   this.mapFakeComments = [];
+  this.mapOriginalCommentsId = [];
   this.shouldCollectComment = false;
   this.init();
   this.preCommentMarker = preCommentMark.init(this.ace);
@@ -324,7 +325,7 @@ ep_comments.prototype.init = function(){
   });
   if(browser.chrome){
     self.padInner.contents().on("copy", function(e) {
-      events.addTextOnClipboard(e, self.ace, self.padInner, allComments);
+      events.addTextOnClipboard(e, self.ace, self.padInner, allComments, self.commentReplies);
     });
 
     self.padInner.contents().on("cut", function(e) {
@@ -334,7 +335,7 @@ ep_comments.prototype.init = function(){
     });
 
     self.padInner.contents().on("paste", function(e) {
-      events.addCommentClasses(e);
+      events.saveCommentsAndReplies(e);
     });
   }
 };
@@ -693,6 +694,13 @@ ep_comments.prototype.setComment = function(commentId, comment){
   comments[commentId].data = comment;
 };
 
+ep_comments.prototype.setCommentReply = function(commentReply){
+  var commentReplies = this.commentReplies;
+  var replyId = commentReply.replyId;
+  if(commentReplies[replyId] == null) commentReplies[replyId] = {}
+  commentReplies[replyId] = commentReply;
+};
+
 // Get all comments
 ep_comments.prototype.getComments = function (callback){
   var req = { padId: this.padId };
@@ -978,6 +986,8 @@ ep_comments.prototype.saveCommentWithoutSelection = function (data) {
   var fakeCommentId = data.comment.commentId;
   var newCommentId =  self.generateCommentId();
   self.mapFakeComments[fakeCommentId] = newCommentId;
+  var originalCommentId = data.comment.originalCommentId;
+  self.mapOriginalCommentsId[originalCommentId] = newCommentId;
   data.comment.commentId = newCommentId;
   self.socket.emit('addComment', data, function (commentId, comment){
     comment.commentId = commentId;
@@ -994,6 +1004,29 @@ ep_comments.prototype.saveCommentWithoutSelection = function (data) {
  ep_comments.prototype.getMapfakeComments = function(){
    return this.mapFakeComments;
  }
+
+ ep_comments.prototype.saveCommentReplies = function(commentReplyData){
+   var self = this;
+   var data = self.createCommentReply(commentReplyData);
+   self.socket.emit('addCommentReply', data, function (){
+    self.setCommentReply(data);
+    // the comment reply is collected together with the comment
+   });
+ }
+
+ ep_comments.prototype.createCommentReply = function(replyData){
+   var data = this.getCommentData();
+   data.commentId = replyData.commentId;
+   data.text = replyData.text;
+   data.changeTo = replyData.changeTo
+   data.changeFrom = replyData.changeFrom;
+   data.replyId = replyData.replyId;
+   data.name = replyData.name;
+   data.timestamp = parseInt(replyData.timestamp);
+
+   return data;
+ }
+
 // Listen for comment replies
 ep_comments.prototype.commentRepliesListen = function(){
   var self = this;
@@ -1107,6 +1140,7 @@ var hooks = {
       if(commentWasPasted){
         pad.plugins.ep_comments_page.shouldCollectComment = false;
         pad.plugins.ep_comments_page.collectComments();
+        pad.plugins.ep_comments_page.collectCommentReplies();
       }
     }
 

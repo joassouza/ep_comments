@@ -1,6 +1,6 @@
 var randomString = require('ep_etherpad-lite/static/js/pad_utils').randomString;
 
-exports.addTextOnClipboard = function(e, ace, padInner, comments){
+exports.addTextOnClipboard = function(e, ace, padInner, comments, replies){
   var commentIdOnSelection;
   var hasCommentOnSelection;
   ace.callWithAce(function(ace) {
@@ -22,9 +22,13 @@ exports.addTextOnClipboard = function(e, ace, padInner, comments){
       var textSelected = rawHtml[0].outerText;
       html = buildHtmlToCopy(textSelected, range, commentIdOnSelection);
     }
+    var commentIds = getCommentIds(html);
     commentsData = buildCommentsData(html, comments);
     var htmlToCopy = replaceCommentIdsWithFakeIds(commentsData, html)
     commentsData = JSON.stringify(commentsData);
+    var replyData = getReplyData(replies, commentIds);
+    replyData = JSON.stringify(replyData);
+    e.originalEvent.clipboardData.setData('text/objectReply', replyData);
     e.originalEvent.clipboardData.setData('text/objectComment', commentsData)
     // here we override the default copy behavior
     e.originalEvent.clipboardData.setData('text/html', htmlToCopy);
@@ -32,6 +36,23 @@ exports.addTextOnClipboard = function(e, ace, padInner, comments){
   }
 };
 
+var getReplyData = function(replies, commentIds){
+  var replyData = {};
+  _.each(commentIds, function(commentId){
+    replyData =  _.extend(getRepliesFromCommentId(replies, commentId), replyData);
+  });
+  return replyData;
+};
+
+var getRepliesFromCommentId = function(replies, commentId){
+  var repliesFromCommentID = {};
+  _.each(replies, function(reply, replyId){
+    if(reply.commentId === commentId){
+      repliesFromCommentID[replyId] = reply;
+    }
+  });
+  return repliesFromCommentID;
+};
 
 var mapCommentIdToFakeId = function(commentsData){
   var commmentsDataInverted = {};
@@ -146,18 +167,37 @@ var getTagsInSelection = function(htmlObject){
   return tags;
 };
 
-exports.addCommentClasses = function(e){
+exports.saveCommentsAndReplies = function(e){
   var comments = e.originalEvent.clipboardData.getData('text/objectComment');
+  var replies = e.originalEvent.clipboardData.getData('text/objectReply');
 
-  if(comments) {
+  if(comments && replies) {
     setTimeout(function(){
       comments = JSON.parse(comments);
-      _.each(comments, function(comment, fakeCommentId){
-        var commentData = buildCommentData(comment, fakeCommentId);
-        pad.plugins.ep_comments_page.saveCommentWithoutSelection(commentData);
-      });
+      replies = JSON.parse(replies);
+      saveComment(comments, function(){
+        saveReplies(replies);
+      })
     },0)
   }
+};
+
+var saveComment = function(comments, callback){
+  _.each(comments, function(comment, fakeCommentId){
+    var commentData = buildCommentData(comment, fakeCommentId);
+    pad.plugins.ep_comments_page.saveCommentWithoutSelection(commentData);
+  });
+  callback();
+};
+
+var saveReplies = function(replies){
+  var mapOriginalCommentsId = pad.plugins.ep_comments_page.mapOriginalCommentsId;
+  _.each(replies, function(reply){
+    var originalCommentId = reply.commentId;
+    // as the comment copied has got a new commentId, we set this id in the reply as well
+    reply.commentId = mapOriginalCommentsId[originalCommentId];
+    pad.plugins.ep_comments_page.saveCommentReplies(reply);
+  });
 };
 
 var buildCommentData = function(comment, fakeCommentId){
