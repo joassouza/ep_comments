@@ -17,8 +17,9 @@ var preCommentMark = require('ep_comments_page/static/js/preCommentMark');
 var commentL10n = require('ep_comments_page/static/js/commentL10n');
 var events = require('ep_comments_page/static/js/copyPasteEvents');
 var getCommentIdOnSelection = events.getCommentIdOnSelection;
+var hasCommentOnSelection = events.hasCommentOnSelection;
 var browser = require('ep_etherpad-lite/static/js/browser');
-
+var randomString = require('ep_etherpad-lite/static/js/pad_utils').randomString;
 
 var cssFiles = ['ep_comments_page/static/css/comment.css', 'ep_comments_page/static/css/commentIcon.css'];
 
@@ -43,6 +44,8 @@ function ep_comments(context){
   this.padId      = clientVars.padId;
   this.comments   = [];
   this.commentReplies = {};
+  this.mapFakeComments = [];
+  this.shouldCollectComment = false;
   this.init();
   this.preCommentMarker = preCommentMark.init(this.ace);
 
@@ -309,13 +312,19 @@ ep_comments.prototype.init = function(){
   // Override  copy, cut, paste events on Google chrome.
   // When an user copies a comment and selects only the span, or part of it, Google chrome
   // does not copy the classes only the styles, for example:
-  // <comment><span>text to be copied</span></comment>
+  // <comment class='comment'><span>text to be copied</span></comment>
   // As the comment classes are not only used for styling we have to add these classes when it pastes the content
   // The same does not occur when the user selects more than the span, for example:
-  // text<comment><span>to be copied</span></comment>
+  // text<comment class='comment'><span>to be copied</span></comment>
+  var allComments;
+  self.getComments(function (comments){
+    if (!$.isEmptyObject(comments)){
+      allComments = comments;
+    }
+  });
   if(browser.chrome){
     self.padInner.contents().on("copy", function(e) {
-      events.addTextOnClipboard(e, self.ace, self.padInner);
+      events.addTextOnClipboard(e, self.ace, self.padInner, allComments);
     });
 
     self.padInner.contents().on("cut", function(e) {
@@ -381,7 +390,6 @@ ep_comments.prototype.collectComments = function(callback){
             container.css('top', containerTop - (commentTop - markerTop));
           });
         }
-
         // localize comment element
         commentL10n.localize(commentElm);
       }
@@ -951,7 +959,6 @@ ep_comments.prototype.cleanLine = function(line, lineText){
 // Save comment
 ep_comments.prototype.saveComment = function(data, rep) {
   var self = this;
-
   self.socket.emit('addComment', data, function (commentId, comment){
     comment.commentId = commentId;
 
@@ -966,6 +973,27 @@ ep_comments.prototype.saveComment = function(data, rep) {
   });
 }
 
+ep_comments.prototype.saveCommentWithoutSelection = function (data) {
+  var self = this;
+  var fakeCommentId = data.comment.commentId;
+  var newCommentId =  self.generateCommentId();
+  self.mapFakeComments[fakeCommentId] = newCommentId;
+  data.comment.commentId = newCommentId;
+  self.socket.emit('addComment', data, function (commentId, comment){
+    comment.commentId = commentId;
+    self.setComment(commentId, comment);
+    self.shouldCollectComment = true;
+  });
+}
+
+ ep_comments.prototype.generateCommentId = function(){
+   var commentId = "c-" + randomString(16);
+   return commentId;
+ }
+
+ ep_comments.prototype.getMapfakeComments = function(){
+   return this.mapFakeComments;
+ }
 // Listen for comment replies
 ep_comments.prototype.commentRepliesListen = function(){
   var self = this;
@@ -1073,7 +1101,15 @@ var hooks = {
     // otherwise there's nothing to adjust anyway
     if (pad.plugins && pad.plugins.ep_comments_page) {
       pad.plugins.ep_comments_page.setYofComments();
+      var commentWasPasted = pad.plugins.ep_comments_page.shouldCollectComment;
+      // if a comment was pasted we have to collect comments again, otherwise the new icons
+      // will not be shown
+      if(commentWasPasted){
+        pad.plugins.ep_comments_page.shouldCollectComment = false;
+        pad.plugins.ep_comments_page.collectComments();
+      }
     }
+
   },
 
   // Insert comments classes
@@ -1193,5 +1229,6 @@ exports.aceInitialized = function(hook, context){
   var editorInfo = context.editorInfo;
   editorInfo.ace_getRepFromSelector = _(getRepFromSelector).bind(context);
   editorInfo.ace_getCommentIdOnSelection = _(getCommentIdOnSelection).bind(context);
+  editorInfo.ace_hasCommentOnSelection = _(hasCommentOnSelection).bind(context);
 }
 

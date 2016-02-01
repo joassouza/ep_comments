@@ -1,25 +1,89 @@
-exports.addTextOnClipboard = function(e, ace, padInner){
+var randomString = require('ep_etherpad-lite/static/js/pad_utils').randomString;
+
+exports.addTextOnClipboard = function(e, ace, padInner, comments){
   var commentIdOnSelection;
+  var hasCommentOnSelection;
   ace.callWithAce(function(ace) {
     commentIdOnSelection = ace.ace_getCommentIdOnSelection();
+    hasCommentOnSelection = ace.ace_hasCommentOnSelection();
   });
-  // we check if all the selection is in the same comment, if so, we override the copy behavior
-  if (commentIdOnSelection) {
+
+  if(hasCommentOnSelection){
+    var commentsData;
     var range = padInner.contents()[0].getSelection().getRangeAt(0);
-    var hiddenDiv = createHiddenDiv(range);
-    var html = getHtml(hiddenDiv);
-    // when the range selection is fully inside a tag, 'html' will have no HTML tag, so we have to
+    var rawHtml = createHiddenDiv(range);
+    var html = rawHtml;
+    var onlyTextIsSelected = selectionHasOnlyText(rawHtml);
+    // when the range selection is fully inside a tag, 'rawHtml' will have no HTML tag, so we have to
     // build it. Ex: if we have '<span>ab<b>cdef</b>gh</span>" and user selects 'de', the value of
-    //'html' will be 'de', not '<b>de</b>'
-    if (selectionHasOnlyText(html, hiddenDiv)) {
-      html = buildHtmlToCopy(html, range);
-      e.originalEvent.clipboardData.setData('text/copyCommentId', commentIdOnSelection);
+    //'rawHtml' will be 'de', not '<b>de</b>'. As it is not possible to have two comments in the same text
+    // commentIdOnSelection is the commentId in this partial selection
+    if (onlyTextIsSelected) {
+      var textSelected = rawHtml[0].outerText;
+      html = buildHtmlToCopy(textSelected, range, commentIdOnSelection);
     }
+    commentsData = buildCommentsData(html, comments);
+    var htmlToCopy = replaceCommentIdsWithFakeIds(commentsData, html)
+    commentsData = JSON.stringify(commentsData);
+    e.originalEvent.clipboardData.setData('text/objectComment', commentsData)
     // here we override the default copy behavior
-    e.originalEvent.clipboardData.setData('text/html', html);
+    e.originalEvent.clipboardData.setData('text/html', htmlToCopy);
     e.preventDefault();
   }
 };
+
+var mapCommentIdToFakeId = function(commentsData){
+  var commmentsDataInverted = {};
+  _.each(commentsData, function(comment, fakeCommentId){
+    commentId = comment.originalCommentId;
+    commmentsDataInverted[commentId] = fakeCommentId;
+  });
+  return commmentsDataInverted;
+}
+
+var replaceCommentIdsWithFakeIds = function(commentsData, html){
+  var commmentsDataInverted =  mapCommentIdToFakeId(commentsData);
+  _.each(commmentsDataInverted, function(fakeCommentId, commentId){
+    $(html).find("." + commentId).removeClass(commentId).addClass(fakeCommentId);
+  });
+  var htmlWithFakeCommentIds = getHtml(html);
+  return htmlWithFakeCommentIds;
+}
+
+var buildCommentsData = function(html, comments){
+  var commentsData = {};
+  var originalCommentIds = getCommentIds(html);
+  if(originalCommentIds.length){
+    _.each(originalCommentIds, function(originalCommentId){
+      var fakeCommentId = generateFakeCommentId();
+      var comment = comments[originalCommentId];
+      comment.originalCommentId = originalCommentId;
+      commentsData[fakeCommentId] = comment;
+    });
+  }
+  return commentsData;
+}
+
+var generateFakeCommentId = function(){
+  var commentId = "fakecomment-" + randomString(16);
+  return commentId;
+};
+
+var getCommentIds = function(html){
+  var commentId = null;
+  var allSpans = $(html).find("span");
+  var commentIds = [];
+  _.each(allSpans, function(span){
+    var cls = $(span).attr('class');
+    var classCommentId = /(?:^| )(c-[A-Za-z0-9]*)/.exec(cls);
+    commentId = (classCommentId) ? classCommentId[1] : false;
+    if(commentId){
+      commentIds.push(commentId);
+    }
+  });
+  var uniqueCommentIds = _.uniq(commentIds);
+  return uniqueCommentIds;
+ };
 
 var createHiddenDiv = function(range){
   var content = range.cloneContents();
@@ -32,13 +96,14 @@ var getHtml = function(hiddenDiv){
   return $(hiddenDiv).html();
 };
 
-var selectionHasOnlyText = function(html, hiddenDiv){
+var selectionHasOnlyText = function(rawHtml){
+  var html = getHtml(rawHtml);
   var htmlDecoded = htmlDecode(html);
-  var text = $(hiddenDiv).text();
+  var text = $(rawHtml).text();
   return htmlDecoded === text;
 };
 
-var buildHtmlToCopy = function(html, range) {
+var buildHtmlToCopy = function(html, range, commentId) {
   var htmlOfParentNode = range.commonAncestorContainer.parentNode;
   var tags = getTagsInSelection(htmlOfParentNode);
   // this case happens when we got a selection with one or more styling (bold, italic, underline, strikethrough)
@@ -46,10 +111,9 @@ var buildHtmlToCopy = function(html, range) {
   if(tags){
     html = buildOpenTags(tags) + html + buildCloseTags(tags);
   }
-  var htmlToCopy = "<span class='comment'>" + html + "</span>";
+  var htmlToCopy = $.parseHTML("<div><span class='comment " + commentId + "'>" + html + "</span></br></div>");
   return htmlToCopy;
 };
-
 
 var buildOpenTags = function(tags){
   var openTags = "";
@@ -82,40 +146,27 @@ var getTagsInSelection = function(htmlObject){
 }
 
 exports.addCommentClasses = function(e){
-  var commentId = e.originalEvent.clipboardData.getData('text/copyCommentId');
-  var target = e.target;
-  if (commentId) {
-    // we need to wait the paste process finishes completely, otherwise we will not have the target to add the necessary classes
-    setTimeout(function() {
-      addCommentClassesOnline(target, commentId);
-    }, 0);
+  var comments = e.originalEvent.clipboardData.getData('text/objectComment');
+
+  if(comments) {
+    setTimeout(function(){
+      comments = JSON.parse(comments);
+      _.each(comments, function(comment, fakeCommentId){
+        var commentData = buildCommentData(comment, fakeCommentId);
+        pad.plugins.ep_comments_page.saveCommentWithoutSelection(commentData);
+      });
+    },0)
   }
 };
 
-var addCommentClassesOnline = function (target, commentId) {
-  var pastingOnEmptyLine = isEmptyLine(target);
-  var targetElement;
-  if (pastingOnEmptyLine){
-    targetElement = $(target).parent();
-  }else{
-    targetElement = getTargetOnLineWithContent();
-  }
-  targetElement.addClass(commentId).addClass('comment');
-};
-
-
-var getTargetOnLineWithContent = function() {
-  var padOuter = $('iframe[name="ace_outer"]').contents();
-  var padInner = padOuter.find('iframe[name="ace_inner"]').contents();
-  var target = padInner.find("span[style='background-color: rgb(255, 250, 205);']");
-  return target;
-};
-
-// an empty line has only a <br>
-var isEmptyLine = function(target) {
-  return $(target).is("br");
-};
-
+var buildCommentData = function(comment, fakeCommentId){
+  var commentData = {};
+  commentData.comment = {};
+  commentData.padId = clientVars.padId;
+  commentData.comment = comment;
+  commentData.comment.commentId = fakeCommentId;
+  return commentData;
+}
 // copied from https://css-tricks.com/snippets/javascript/unescape-html-in-js/
 var htmlDecode = function(input) {
   var e = document.createElement('div');
@@ -126,9 +177,73 @@ var htmlDecode = function(input) {
 exports.getCommentIdOnSelection = function() {
   var attributeManager = this.documentAttributeManager;
   var rep = this.rep;
-  var selStartAttrib = _.object(attributeManager.getAttributesOnPosition(rep.selStart[0], rep.selStart[1])).comment;
-  var selEndAttrib = _.object(attributeManager.getAttributesOnPosition(rep.selEnd[0], rep.selEnd[1] - 1)).comment;
-  return selStartAttrib === selEndAttrib ? selStartAttrib : null;
+  var commentId = _.object(attributeManager.getAttributesOnPosition(rep.selStart[0], rep.selStart[1])).comment;
+  return commentId;
 };
 
+exports.hasCommentOnSelection = function() {
+  var hasComment;
+  var attributeManager = this.documentAttributeManager;
+  var rep = this.rep;
+  var firstLineOfSelection = rep.selStart[0];
+  var firstColumn = rep.selStart[1];
+  var lastColumn = rep.selEnd[1];
+  var lastLineOfSelection = rep.selEnd[0];
+  selectionOfMultipleLine = hasMultipleLineSelected(firstLineOfSelection, lastLineOfSelection);
 
+  if(selectionOfMultipleLine){
+    hasComment = hasCommentOnMultipleLineSelection(firstLineOfSelection,lastLineOfSelection, rep, attributeManager);
+  }else{
+    hasComment = hasCommentOnLine(firstLineOfSelection, firstColumn, lastColumn, attributeManager)
+  }
+  return hasComment;
+};
+
+var hasCommentOnMultipleLineSelection = function(firstLineOfSelection, lastLineOfSelection, rep, attributeManager){
+  var line = firstLineOfSelection;
+  var multipleLineSelectionHasComment = false;
+  for (var line; line <= lastLineOfSelection; line++) {
+    var firstColumn = getFirstColumnOfSelection(line, rep, firstLineOfSelection);
+    var lastColumn = getLastColumnOfSelection(line, rep, lastLineOfSelection);
+    hasComment = hasCommentOnLine(line, firstColumn, lastColumn, attributeManager)
+    if (hasComment) multipleLineSelectionHasComment = true;
+  };
+  return multipleLineSelectionHasComment;
+}
+
+var getFirstColumnOfSelection = function(line, rep, firstLineOfSelection){
+  return line != firstLineOfSelection ? 0 : rep.selStart[1];
+}
+
+var getLastColumnOfSelection = function(line, rep, lastLineOfSelection){
+  var lineLength = getLength(line, rep);
+  var positionOfLastCharacterSelected = rep.selEnd[1] - 1;
+  return line != lastLineOfSelection ? lineLength : positionOfLastCharacterSelected;
+}
+
+var hasCommentOnLine = function(lineNumber, firstColumn, lastColumn, attributeManager){
+  var column = firstColumn;
+  var hasComment = false;
+  for (column; column <= lastColumn; column++) {
+   var commentId = _.object(attributeManager.getAttributesOnPosition(lineNumber, column)).comment;
+   if (commentId != undefined){
+    hasComment = true;
+   }
+  };
+  return hasComment;
+}
+
+var hasMultipleLineSelected = function(firstLineOfSelection, lastLineOfSelection){
+  return  firstLineOfSelection != lastLineOfSelection;
+}
+
+var getLength = function(line, rep) {
+  var nextLine = line + 1;
+  var startLineOffset = rep.lines.offsetOfIndex(line);
+  var endLineOffset   = rep.lines.offsetOfIndex(nextLine);
+
+  //lineLength without \n
+  var lineLength = endLineOffset - startLineOffset - 1;
+
+  return lineLength;
+}
