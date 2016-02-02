@@ -57,7 +57,7 @@ var getRepliesFromCommentId = function(replies, commentId){
 var mapCommentIdToFakeId = function(commentsData){
   var commmentsDataInverted = {};
   _.each(commentsData, function(comment, fakeCommentId){
-    commentId = comment.originalCommentId;
+    commentId = comment.data.originalCommentId;
     commmentsDataInverted[commentId] = fakeCommentId;
   });
   return commmentsDataInverted;
@@ -79,7 +79,7 @@ var buildCommentsData = function(html, comments){
     _.each(originalCommentIds, function(originalCommentId){
       var fakeCommentId = generateFakeCommentId();
       var comment = comments[originalCommentId];
-      comment.originalCommentId = originalCommentId;
+      comment.data.originalCommentId = originalCommentId;
       commentsData[fakeCommentId] = comment;
     });
   }
@@ -191,20 +191,22 @@ var saveComment = function(comments, callback){
 };
 
 var saveReplies = function(replies){
+  var repliesToSave = {};
   var mapOriginalCommentsId = pad.plugins.ep_comments_page.mapOriginalCommentsId;
   _.each(replies, function(reply){
     var originalCommentId = reply.commentId;
     // as the comment copied has got a new commentId, we set this id in the reply as well
     reply.commentId = mapOriginalCommentsId[originalCommentId];
-    pad.plugins.ep_comments_page.saveCommentReplies(reply);
+    repliesToSave[reply.replyId] = reply;
   });
+  pad.plugins.ep_comments_page.saveCommentReplies(repliesToSave);
 };
 
 var buildCommentData = function(comment, fakeCommentId){
   var commentData = {};
   commentData.comment = {};
   commentData.padId = clientVars.padId;
-  commentData.comment = comment;
+  commentData.comment = comment.data;
   commentData.comment.commentId = fakeCommentId;
   return commentData;
 };

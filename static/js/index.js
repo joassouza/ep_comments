@@ -317,15 +317,9 @@ ep_comments.prototype.init = function(){
   // As the comment classes are not only used for styling we have to add these classes when it pastes the content
   // The same does not occur when the user selects more than the span, for example:
   // text<comment class='comment'><span>to be copied</span></comment>
-  var allComments;
-  self.getComments(function (comments){
-    if (!$.isEmptyObject(comments)){
-      allComments = comments;
-    }
-  });
   if(browser.chrome){
     self.padInner.contents().on("copy", function(e) {
-      events.addTextOnClipboard(e, self.ace, self.padInner, allComments, self.commentReplies);
+      events.addTextOnClipboard(e, self.ace, self.padInner, self.comments, self.commentReplies);
     });
 
     self.padInner.contents().on("cut", function(e) {
@@ -696,9 +690,9 @@ ep_comments.prototype.setComment = function(commentId, comment){
 
 ep_comments.prototype.setCommentReply = function(commentReply){
   var commentReplies = this.commentReplies;
-  var replyId = commentReply.replyId;
+  var replyId = commentReply[0];
   if(commentReplies[replyId] == null) commentReplies[replyId] = {}
-  commentReplies[replyId] = commentReply;
+  commentReplies[replyId] = commentReply[1];
 };
 
 // Get all comments
@@ -1007,11 +1001,21 @@ ep_comments.prototype.saveCommentWithoutSelection = function (data) {
 
  ep_comments.prototype.saveCommentReplies = function(commentReplyData){
    var self = this;
-   var data = self.createCommentReply(commentReplyData);
-   self.socket.emit('addCommentReply', data, function (){
-    self.setCommentReply(data);
-    // the comment reply is collected together with the comment
+   var data = self.createCommentReplies(commentReplyData);
+   self.socket.emit('bulkAddCommentReplies', data, function (replies){
+    _.each(replies,function(reply){
+      self.setCommentReply(reply);
+      // the comment reply is collected together with the comment
+    });
    });
+ }
+
+ ep_comments.prototype.createCommentReplies = function(repliesData){
+  var self = this;
+  var replies = _.map(repliesData, function(replyData){
+    return self.createCommentReply(replyData);
+  });
+  return replies;
  }
 
  ep_comments.prototype.createCommentReply = function(replyData){

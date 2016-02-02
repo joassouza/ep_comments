@@ -10,7 +10,7 @@ var collectContentPre = function(hook, context){
   if(fakeComment){
     var mapFakeComments = pad.plugins.ep_comments_page.getMapfakeComments();
     var fakeCommentId = fakeComment[1];
-    var commentId = mapFakeComments[fakeCommentId]
+    var commentId = mapFakeComments[fakeCommentId];
     context.cc.doAttrib(context.state, "comment::" + commentId);
   }
 };
