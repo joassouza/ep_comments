@@ -454,6 +454,7 @@ ep_comments.prototype.collectComments = function(callback){
   self.addListenersToCloseOpenedComment();
 
   self.setYofComments();
+  if(callback) callback();
 };
 
 ep_comments.prototype.addListenersToCloseOpenedComment = function() {
@@ -497,7 +498,6 @@ ep_comments.prototype.collectCommentReplies = function(callback){
   var padComment  = this.padInner.contents().find('.comment');
   $.each(this.commentReplies, function(replyId, reply){
     var commentId = reply.commentId;
-
     // tell comment icon that this comment has 1+ replies
     commentIcons.commentHasReply(commentId);
 
@@ -1143,8 +1143,11 @@ var hooks = {
       // will not be shown
       if(commentWasPasted){
         pad.plugins.ep_comments_page.shouldCollectComment = false;
-        pad.plugins.ep_comments_page.collectComments();
-        pad.plugins.ep_comments_page.collectCommentReplies();
+        // we can only collect the replies when all the comments were collected, otherwise
+        // the reply will not be appended in the comment form
+        pad.plugins.ep_comments_page.collectComments(function(){
+          pad.plugins.ep_comments_page.collectCommentReplies();
+        });
       }
     }
 

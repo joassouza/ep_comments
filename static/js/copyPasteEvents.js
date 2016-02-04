@@ -193,11 +193,11 @@ var saveComment = function(comments, callback){
 var saveReplies = function(replies){
   var repliesToSave = {};
   var mapOriginalCommentsId = pad.plugins.ep_comments_page.mapOriginalCommentsId;
-  _.each(replies, function(reply){
+  _.each(replies, function(reply, replyId){
     var originalCommentId = reply.commentId;
     // as the comment copied has got a new commentId, we set this id in the reply as well
     reply.commentId = mapOriginalCommentsId[originalCommentId];
-    repliesToSave[reply.replyId] = reply;
+    repliesToSave[replyId] = reply;
   });
   pad.plugins.ep_comments_page.saveCommentReplies(repliesToSave);
 };
