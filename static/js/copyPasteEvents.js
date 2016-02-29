@@ -192,6 +192,7 @@ var saveComment = function(comments, callback){
 
 var saveReplies = function(replies){
   var repliesToSave = {};
+  var padId = clientVars.padId;
   var mapOriginalCommentsId = pad.plugins.ep_comments_page.mapOriginalCommentsId;
   _.each(replies, function(reply, replyId){
     var originalCommentId = reply.commentId;
@@ -199,7 +200,7 @@ var saveReplies = function(replies){
     reply.commentId = mapOriginalCommentsId[originalCommentId];
     repliesToSave[replyId] = reply;
   });
-  pad.plugins.ep_comments_page.saveCommentReplies(repliesToSave);
+  pad.plugins.ep_comments_page.saveCommentReplies(padId, repliesToSave);
 };
 
 var buildCommentData = function(comment, fakeCommentId){

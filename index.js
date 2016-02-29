@@ -79,8 +79,7 @@ exports.socketio = function (hook_name, args, cb){
       });
     });
 
-    socket.on('bulkAddCommentReplies', function(data, callback){
-      var padId = data[0].padId;
+    socket.on('bulkAddCommentReplies', function(padId, data, callback){
       commentManager.bulkAddCommentReplies(padId, data, function (err, repliesId, replies){
         socket.broadcast.to(padId).emit('pushAddCommentReply', repliesId, replies);
         var repliesWithReplyId = _.zip(repliesId, replies);

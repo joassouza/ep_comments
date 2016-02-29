@@ -999,10 +999,10 @@ ep_comments.prototype.saveCommentWithoutSelection = function (data) {
    return this.mapFakeComments;
  }
 
- ep_comments.prototype.saveCommentReplies = function(commentReplyData){
+ ep_comments.prototype.saveCommentReplies = function(padId, commentReplyData){
    var self = this;
    var data = self.createCommentReplies(commentReplyData);
-   self.socket.emit('bulkAddCommentReplies', data, function (replies){
+   self.socket.emit('bulkAddCommentReplies', padId, data, function (replies){
     _.each(replies,function(reply){
       self.setCommentReply(reply);
       // the comment reply is collected together with the comment
