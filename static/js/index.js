@@ -571,7 +571,7 @@ ep_comments.prototype.setYofComments = function(){
   // for each comment in the pad
   var padOuter = $('iframe[name="ace_outer"]').contents();
   var padInner = padOuter.find('iframe[name="ace_inner"]');
-  var inlineComments = padInner.contents().find(".comment");
+  var inlineComments = this.getFirstOcurrenceOfCommentIds();
   var commentsToBeShown = [];
 
   // hide each outer comment...
@@ -598,6 +598,25 @@ ep_comments.prototype.setYofComments = function(){
     commentEle.show();
   });
 };
+
+ep_comments.prototype.getFirstOcurrenceOfCommentIds = function(){
+  var padOuter = $('iframe[name="ace_outer"]').contents();
+  var padInner = padOuter.find('iframe[name="ace_inner"]').contents();
+  var commentsId = this.getUniqueCommentsId(padInner);
+  var firstOcurrenceOfCommentIds = _.map(commentsId, function(commentId){
+   return padInner.find("." + commentId).first().get(0);
+  });
+  return firstOcurrenceOfCommentIds;
+ }
+
+ep_comments.prototype.getUniqueCommentsId = function(padInner){
+  var inlineComments = padInner.find(".comment");
+  var commentsId = _.map(inlineComments, function(inlineComment){
+   var commentId = /(?:^| )(c-[A-Za-z0-9]*)/.exec(inlineComment.className);
+   return commentId[1];
+  });
+  return _.uniq(commentsId);
+}
 
 // Make the adjustments after editor is resized (due to a window resize or
 // enabling/disabling Page View)
