@@ -613,7 +613,8 @@ ep_comments.prototype.getUniqueCommentsId = function(padInner){
   var inlineComments = padInner.find(".comment");
   var commentsId = _.map(inlineComments, function(inlineComment){
    var commentId = /(?:^| )(c-[A-Za-z0-9]*)/.exec(inlineComment.className);
-   return commentId[1];
+   // avoid when it has a '.comment' that it has a fakeComment class 'fakecomment-123' yet.
+   if(commentId) return commentId[1];
   });
   return _.uniq(commentsId);
 }
@@ -1151,25 +1152,17 @@ var hooks = {
 
     // var padOuter = $('iframe[name="ace_outer"]').contents();
     // padOuter.find('#sidediv').removeClass("sidedivhidden"); // TEMPORARY to do removing authorship colors can add sidedivhidden class to sidesiv!
-    if(!context.callstack.docTextChanged) return;
-
-    // only adjust comments if plugin was already initialized,
-    // otherwise there's nothing to adjust anyway
-    if (pad.plugins && pad.plugins.ep_comments_page) {
-      pad.plugins.ep_comments_page.setYofComments();
-      var commentWasPasted = pad.plugins.ep_comments_page.shouldCollectComment;
-      // if a comment was pasted we have to collect comments again, otherwise the new icons
-      // will not be shown
-      if(commentWasPasted){
+    if(eventType == "setup" || eventType == "setBaseText" || eventType == "importText") return;
+    if(context.callstack.docTextChanged) pad.plugins.ep_comments_page.setYofComments();
+    var commentWasPasted = pad.plugins.ep_comments_page.shouldCollectComment;
+    var domClean = context.callstack.domClean;
+    // we have to wait the DOM update from a fakeComment 'fakecomment-123' to a comment class 'c-123'
+    if(commentWasPasted && domClean == true){
+      pad.plugins.ep_comments_page.collectComments(function(){
+        pad.plugins.ep_comments_page.collectCommentReplies();
         pad.plugins.ep_comments_page.shouldCollectComment = false;
-        // we can only collect the replies when all the comments were collected, otherwise
-        // the reply will not be appended in the comment form
-        pad.plugins.ep_comments_page.collectComments(function(){
-          pad.plugins.ep_comments_page.collectCommentReplies();
-        });
-      }
+      });
     }
-
   },
 
   // Insert comments classes
