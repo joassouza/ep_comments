@@ -1064,7 +1064,6 @@ ep_comments.prototype.commentRepliesListen = function(){
         // console.log("collecting comment replies");
         self.commentReplies = replies;
         self.collectCommentReplies();
-        self.commentRepliesListen();
       }
     });
   });
