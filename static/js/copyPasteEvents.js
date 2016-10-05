@@ -30,7 +30,7 @@ exports.addTextOnClipboard = function(e, ace, padInner, comments, replies){
     var replyData = getReplyData(replies, commentIds);
     replyData = JSON.stringify(replyData);
     e.originalEvent.clipboardData.setData('text/objectReply', replyData);
-    e.originalEvent.clipboardData.setData('text/objectComment', commentsData)
+    e.originalEvent.clipboardData.setData('text/objectComment', commentsData);
     // here we override the default copy behavior
     e.originalEvent.clipboardData.setData('text/html', htmlToCopy);
     e.preventDefault();
@@ -58,7 +58,7 @@ var getRepliesFromCommentId = function(replies, commentId){
 var mapCommentIdToFakeId = function(commentsData){
   var commmentsDataInverted = {};
   _.each(commentsData, function(comment, fakeCommentId){
-    commentId = comment.data.originalCommentId;
+    var commentId = comment.data.originalCommentId;
     commmentsDataInverted[commentId] = fakeCommentId;
   });
   return commmentsDataInverted;
@@ -158,7 +158,7 @@ var buildCloseTags = function(tags){
 var getTagsInSelection = function(htmlObject){
   var tags = [];
   var tag;
-  while($(htmlObject)[0].localName != "span"){
+  while($(htmlObject)[0].localName !== "span"){
     var html = $(htmlObject).prop('outerHTML');
     var stylingTagRegex = /<(b|i|u|s)>/.exec(html);
     tag = stylingTagRegex ? stylingTagRegex[1] : "";
@@ -234,7 +234,7 @@ exports.hasCommentOnSelection = function() {
   var firstColumn = rep.selStart[1];
   var lastColumn = rep.selEnd[1];
   var lastLineOfSelection = rep.selEnd[0];
-  selectionOfMultipleLine = hasMultipleLineSelected(firstLineOfSelection, lastLineOfSelection);
+  var selectionOfMultipleLine = hasMultipleLineSelected(firstLineOfSelection, lastLineOfSelection);
 
   if(selectionOfMultipleLine){
     hasComment = hasCommentOnMultipleLineSelection(firstLineOfSelection,lastLineOfSelection, rep, attributeManager);
@@ -247,23 +247,25 @@ exports.hasCommentOnSelection = function() {
 var hasCommentOnMultipleLineSelection = function(firstLineOfSelection, lastLineOfSelection, rep, attributeManager){
   var line = firstLineOfSelection;
   var multipleLineSelectionHasComment = false;
-  for (var line; line <= lastLineOfSelection; line++) {
+  for (line; line <= lastLineOfSelection; line++) {
     var firstColumn = getFirstColumnOfSelection(line, rep, firstLineOfSelection);
     var lastColumn = getLastColumnOfSelection(line, rep, lastLineOfSelection);
-    hasComment = hasCommentOnLine(line, firstColumn, lastColumn, attributeManager)
-    if (hasComment) multipleLineSelectionHasComment = true;
-  };
+    var hasComment = hasCommentOnLine(line, firstColumn, lastColumn, attributeManager)
+    if (hasComment){
+      multipleLineSelectionHasComment = true;
+    }
+  }
   return multipleLineSelectionHasComment;
 };
 
 var getFirstColumnOfSelection = function(line, rep, firstLineOfSelection){
-  return line != firstLineOfSelection ? 0 : rep.selStart[1];
+  return line !== firstLineOfSelection ? 0 : rep.selStart[1];
 };
 
 var getLastColumnOfSelection = function(line, rep, lastLineOfSelection){
   var lineLength = getLength(line, rep);
   var positionOfLastCharacterSelected = rep.selEnd[1] - 1;
-  return line != lastLineOfSelection ? lineLength : positionOfLastCharacterSelected;
+  return line !== lastLineOfSelection ? lineLength : positionOfLastCharacterSelected;
 };
 
 var hasCommentOnLine = function(lineNumber, firstColumn, lastColumn, attributeManager){
@@ -271,15 +273,15 @@ var hasCommentOnLine = function(lineNumber, firstColumn, lastColumn, attributeMa
   var hasComment = false;
   for (column; column <= lastColumn; column++) {
    var commentId = _.object(attributeManager.getAttributesOnPosition(lineNumber, column)).comment;
-   if (commentId != undefined){
+   if (commentId !== undefined){
     hasComment = true;
    }
-  };
+  }
   return hasComment;
 };
 
 var hasMultipleLineSelected = function(firstLineOfSelection, lastLineOfSelection){
-  return  firstLineOfSelection != lastLineOfSelection;
+  return  firstLineOfSelection !== lastLineOfSelection;
 };
 
 var getLength = function(line, rep) {
